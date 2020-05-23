@@ -1,0 +1,36 @@
+# \u5B9A\u4F4D\u6A21\u677F\u7684\u76EE\u5F55\u548C\u8BBF\u95EE\u8D44\u6E90\u7C7B\u578B
+spring:
+  mvc:
+    pathmatch:
+      use-suffix-pattern: false
+      use-registered-suffix-pattern: true
+    contentnegotiation:
+      favor-path-extension: false
+  #\u9875\u9762
+  thymeleaf:
+    prefix:
+      classpath: classpath:/templates/
+    cache: false
+    mode: HTML5
+    encoding: UTF-8
+    suffix: .html
+  #\u70ED\u90E8\u7F72
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+  resources:
+    chain:
+      strategy:
+        content:
+          enabled: true
+          paths: /**
+    #静态资源其实目录，默认static
+    static-locations: classpath:/resources/,classpath:/,classpath:/public/
+#日志级别
+logging:
+  level:
+    root: info
+server:
+  servlet:
+    context-path: /view

@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>签名</title>
+    <base th:href="@{/}">
+    <link rel="stylesheet" href="static/jSignature/signName.css">
+    <script src="static/jSignature/libs/jquery.js"></script>
+    <script src="static/jSignature/libs/modernizr.js"></script>
+    <script src="static/jSignature/libs/jSignature.min.noconflict.js"></script>
+    <script src="static/jSignature/controJSignature.js"></script>
+</head>
+
+<body>
+<div>
+    <div id="content">
+        <div id="signatureparent">
+            <p>请在下框签名</p>
+            <div id="signature"></div>
+        </div>
+        <div id="tools"></div>
+    </div>
+    <img id="imgSrc">
+</div>
+</body>
+</html>

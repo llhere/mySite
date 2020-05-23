@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+
+<style>
+html, body{
+  width: 100%;
+  height: 100%;
+  overflow:hidden;
+  font-family: Helvetica,Arial,sans-serif;
+  background-color:#179ed7;
+}
+canvas{
+  position:absolute;
+}
+#textContainer{
+  position:absolute;
+  bottom:10%;
+  width:100%;
+  margin:0;
+  padding:0;
+  color:#FFFFFF;
+  text-align:center;
+}
+a{
+  margin:0.3em;
+  color:#FFFFFF;  
+}
+a:hover{
+  color:#ffde25;  
+}
+
+</style> 
+
+<body>
+	<canvas id="renderCanvas"></canvas>
+	<div id="textContainer">
+	<h1>This page, it doesn't exist</h1>
+</body>
+<script>
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+var MathUtil = /** @class */ (function () {
+    function MathUtil() {
+    }
+    MathUtil.normalize = function (value, min, max) {
+        return (value - min) / (max - min);
+    };
+    MathUtil.interpolate = function (normal, min, max) {
+        return min + (max - min) * normal;
+    };
+    MathUtil.map = function (value, min1, max1, min2, max2) {
+        return MathUtil.interpolate(MathUtil.normalize(value, min1, max1), min2, max2);
+    };
+    MathUtil.smoothstep = function (value, min, max) {
+        var x = Math.max(0, Math.min(1, (value - min) / (max - min)));
+        return x * x * (3 - 2 * x);
+    };
+    MathUtil.clamp = function (value, min, max) {
+        return Math.max(min, Math.min(value, max));
+    };
+    MathUtil.getRandomNumberInRange = function (min, max) {
+        return min + Math.random() * (max - min);
+    };
+    MathUtil.PI2 = Math.PI * 2;
+    return MathUtil;
+}());
+var Point = /** @class */ (function () {
+    function Point(x, y) {
+        if (x === void 0) { x = 0; }
+        if (y === void 0) { y = 0; }
+        this.x = x;
+        this.y = y;
+    }
+    Point.prototype.update = function (x, y) {
+        this.x = x;
+        this.y = y;
+    };
+    return Point;
+}());
+var Rectangle = /** @class */ (function (_super) {
+    __extends(Rectangle, _super);
+    function Rectangle(x, y, width, height) {
+        if (width === void 0) { width = 0; }
+        if (height === void 0) { height = 0; }
+        var _this = _super.call(this, x, y) || this;
+        _this.width = width;
+        _this.height = height;
+        return _this;
+    }
+    Rectangle.prototype.update = function (x, y, width, height) {
+        _this = _super.call(this, x, y) || this;
+        this.width = width;
+        this.height = height;
+    };
+    Rectangle.prototype.inflate = function (value) {
+        this.update(this.x - value, this.y - value, this.width + value * 2, this.height + value * 2);
+    };
+    Rectangle.prototype.updateToRect = function (rect) {
+        this.update(rect.x, rect.y, rect.width, rect.height);
+    };
+    Object.defineProperty(Rectangle.prototype, "right", {
+        get: function () {
+            return this.x + this.width;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Rectangle.prototype, "bottom", {
+        get: function () {
+            return this.y + this.height;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Rectangle.prototype, "centerX", {
+        get: function () {
+            return this.x + this.width / 2;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Rectangle.prototype, "centerY", {
+        get: function () {
+            return this.y + this.height / 2;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Rectangle.prototype, "smallerSide", {
+        get: function () {
+            return Math.min(this.width, this.height);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Rectangle.prototype, "biggerSide", {
+        get: function () {
+            return Math.max(this.width, this.height);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Rectangle.prototype.containsPoint = function (x, y) {
+        return x >= this.x && y >= this.y && x <= this.right() && y <= this.bottom();
+    };
+    Rectangle.prototype.isLandscape = function () {
+        return this.width > this.height;
+    };
+    Rectangle.prototype.isPortrait = function () {
+        return !this.isLandscape();
+    };
+    Rectangle.prototype.toString = function () {
+        var _this = this;
+        var props = Array.from(["x", "y", "width", "height"], function (x) { return x + ":" + _this[x]; });
+        return "Rectangle{" + props.join(",") + "}";
+    };
+    return Rectangle;
+}(Point));
+var UnitEasing = /** @class */ (function () {
+    function UnitEasing() {
+    }
+    UnitEasing.easeNone = function (t) { return t; };
+    ;
+    UnitEasing.easeInSine = function (t) { return 1 + Math.sin(UnitEasing.HALF_PI * t - UnitEasing.HALF_PI); };
+    ;
+    UnitEasing.easeOutSine = function (t) { return Math.sin(UnitEasing.HALF_PI * t); };
+    ;
+    UnitEasing.easeInOutSine = function (t) { return (1 + Math.sin(Math.PI * t - UnitEasing.HALF_PI)) / 2; };
+    ;
+    UnitEasing.HALF_PI = Math.PI / 2;
+    return UnitEasing;
+}());
+var UnitAnimator = /** @class */ (function () {
+    function UnitAnimator() {
+        this._animating = false;
+    }
+    Object.defineProperty(UnitAnimator.prototype, "isAnimating", {
+        get: function () {
+            return this._animating;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    UnitAnimator.prototype.start = function (durationMS, updateCallBack, completeCallBack, easingFunction) {
+        if (updateCallBack === void 0) { updateCallBack = (function () { }); }
+        if (completeCallBack === void 0) { completeCallBack = (function () { }); }
+        if (easingFunction === void 0) { easingFunction = UnitEasing.easeNone; }
+        this._duration = durationMS;
+        this._updateCallBack = updateCallBack;
+        this._completeCallBack = completeCallBack;
+        this._easingFunction = easingFunction;
+        this._animating = true;
+        this._animationStart = Date.now();
+        this._millisecondsAnimated = 0;
+        this._boundLoop = this.loop.bind(this);
+        this.loop();
+    };
+    UnitAnimator.prototype.stop = function () {
+        this._animating = false;
+    };
+    UnitAnimator.prototype.dispatchUpdate = function () {
+        this._updateCallBack(this._easingFunction(this._millisecondsAnimated / this._duration));
+    };
+    UnitAnimator.prototype.loop = function () {
+        if (!this._animating) {
+            return;
+        }
+        this._millisecondsAnimated = Date.now() - this._animationStart;
+        if (this._millisecondsAnimated >= this._duration) {
+            this._animating = false;
+            this._millisecondsAnimated = this._duration;
+            this.dispatchUpdate();
+            this._completeCallBack();
+            return;
+        }
+        this.dispatchUpdate();
+        requestAnimationFrame(this._boundLoop);
+    };
+    return UnitAnimator;
+}());
+var GridArray = /** @class */ (function () {
+    function GridArray() {
+        this._rows = 0;
+        this._cols = 0;
+        this.array = [];
+    }
+    Object.defineProperty(GridArray.prototype, "rows", {
+        get: function () {
+            return this._rows;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GridArray.prototype, "cols", {
+        get: function () {
+            return this._cols;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(GridArray.prototype, "size", {
+        get: function () {
+            return this._rows * this._cols;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    GridArray.prototype.init = function (rows, cols) {
+        if (rows === void 0) { rows = 10; }
+        if (cols === void 0) { cols = 10; }
+        this.array.length = 0;
+        this._rows = rows;
+        this._cols = cols;
+    };
+    GridArray.prototype.getGridIndex = function (row, col) {
+        return row * this._cols + col;
+    };
+    GridArray.prototype.getRowForIndex = function (index) {
+        return Math.floor(index / this._cols);
+    };
+    GridArray.prototype.getColForIndex = function (index) {
+        return index % this._cols;
+    };
+    GridArray.prototype.isValidCol = function (col) {
+        return col > -1 && col < this._cols;
+    };
+    GridArray.prototype.isValidRow = function (row) {
+        return row > -1 && row < this._rows;
+    };
+    GridArray.prototype.isValidRowCol = function (row, col) {
+        return this.isValidRow(row) && this.isValidCol(col);
+    };
+    GridArray.prototype.isValidIndex = function (index) {
+        return index > -1 && index < this.size;
+    };
+    return GridArray;
+}());
+var GridArrayScan = /** @class */ (function () {
+    function GridArrayScan() {
+        this.row = 0;
+        this.col = 0;
+        this.maxOffset = 0;
+        this.rules = [];
+    }
+    GridArrayScan.prototype.reset = function () {
+        this.row = 0;
+        this.col = 0;
+    };
+    return GridArrayScan;
+}());
+var GridArrayScanner = /** @class */ (function () {
+    function GridArrayScanner() {
+        this._scan = new GridArrayScan();
+    }
+    GridArrayScanner.prototype.searchSurroundingCells = function (grid, index, compare, counterClockwise) {
+        if (counterClockwise === void 0) { counterClockwise = false; }
+        this._scan.reset();
+        this._scan.row = grid.getRowForIndex(index);
+        this._scan.col = grid.getColForIndex(index);
+        //this._scan.rules = counterClockwise ? GridArrayScanner.scanRulesCC : GridArrayScanner.scanRulesCW;
+        this._scan.maxOffset = Math.max(this._scan.row, this._scan.col, grid.rows - this._scan.row, grid.cols - this._scan.col);
+        return this.surroundSearch(grid, index, 2, compare);
+    };
+    GridArrayScanner.prototype.surroundSearch = function (grid, index, offset, compare) {
+        if (offset > this._scan.maxOffset) {
+            console.log("---> boo hoo, didn't find it?", offset);
+            return -1;
+        }
+        this._scan.row = grid.getRowForIndex(index);
+        this._scan.col = grid.getColForIndex(index);
+        var startOffset = Math.floor(offset * .5);
+        this._scan.row -= startOffset * GridArrayScanner.scanRulesCW[0].y;
+        this._scan.col += startOffset;
+        var total = offset * 4, scanPoint, i, found;
+        for (i = 0; i < total; i++) {
+            scanPoint = GridArrayScanner.scanRulesCW[Math.floor(i / offset)];
+            this._scan.row += scanPoint.y;
+            this._scan.col += scanPoint.x;
+            if (grid.isValidRowCol(this._scan.row, this._scan.col)) {
+                found = grid.getGridIndex(this._scan.row, this._scan.col);
+                if (compare(grid.array[found])) {
+                    return grid.array[found];
+                }
+            }
+        }
+        return this.surroundSearch(grid, index, offset + 2, compare);
+    };
+    GridArrayScanner.scanRulesCW = [{ x: 0, y: 1 }, { x: -1, y: 0 }, { x: 0, y: -1 }, { x: 1, y: 0 }];
+    GridArrayScanner.scanRulesCC = [{ x: 0, y: -1 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 1, y: 0 }];
+    return GridArrayScanner;
+}());
+var EggFactory = /** @class */ (function () {
+    function EggFactory() {
+    }
+    //returns array of x,y pairs : [x,y,x,y,x,y...]
+    EggFactory.getRandomRadiusEggPoints = function (bounds, numPoints, minRadiusNormal) {
+        if (minRadiusNormal === void 0) { minRadiusNormal = .1; }
+        if (!bounds) {
+            console.log("getRandomRadiusEggPoints()", bounds.toString());
+        }
+        minRadiusNormal = MathUtil.clamp(minRadiusNormal, .1, .99);
+        var i, topHeight = Math.floor(bounds.height * .666), bottomHeight = Math.floor(bounds.height - topHeight), points = [], radian, increment = MathUtil.PI2 / numPoints, halfWidth = Math.floor(bounds.width * .5), center = new Point(Math.floor(bounds.centerX), Math.floor(bounds.y + topHeight)), minXRadius = Math.floor(halfWidth * minRadiusNormal), maxXRadius = halfWidth - minXRadius, minYRadius, maxYRadius, radiusNormal;
+        for (i = 0; i < numPoints; i++) {
+            radian = i * increment;
+            radiusNormal = Math.random();
+            if (radian < Math.PI) {
+                minYRadius = bottomHeight * minRadiusNormal;
+                maxYRadius = bottomHeight;
+            }
+            else {
+                minYRadius = topHeight * minRadiusNormal;
+                maxYRadius = topHeight;
+            }
+            points.push(center.x + Math.cos(radian) * MathUtil.interpolate(radiusNormal, minXRadius, halfWidth), center.y + Math.sin(radian) * MathUtil.interpolate(radiusNormal, minYRadius, maxYRadius));
+        }
+        return points;
+    };
+    return EggFactory;
+}());
+var TextCloudStore = /** @class */ (function () {
+    function TextCloudStore() {
+    }
+    TextCloudStore.getCharImageData = function (char, context, bounds) {
+        if (this._charImageDatas[char]) {
+            return this._charImageDatas[char];
+        }
+        context.save();
+        context.fillStyle = "#FF0000";
+        //context.strokeStyle = "#FF0000";
+        //_context.lineWidth = Math.ceil(this._bounds.width * .02);
+        context.font = bounds.height + "px sans-serif, arial, helvetica";
+        context.textAlign = "center";
+        context.textBaseline = "middle";
+        context.fillText(char, bounds.centerX, bounds.centerY);
+        //context.strokeText(char, bounds.centerX, bounds.centerY);
+        var imgData = context.getImageData(bounds.x, bounds.y, bounds.width, bounds.height);
+        this._charImageDatas[char] = imgData;
+        context.restore();
+        return imgData;
+    };
+    TextCloudStore._charImageDatas = {};
+    return TextCloudStore;
+}());
+var FluffyCloud = /** @class */ (function () {
+    function FluffyCloud() {
+        this._fluffGrid = new GridArray();
+    }
+    FluffyCloud.prototype.init = function (canvas, bounds, rows, cols, cloudType) {
+        if (rows === void 0) { rows = 10; }
+        if (cols === void 0) { cols = 10; }
+        this._canvas = canvas;
+        this._context = canvas.getContext("2d");
+        this._fluffGrid.init(rows, cols);
+        this._bounds = bounds;
+        if (cloudType === -1) {
+            this.createRegularCloud();
+        }
+        else {
+            this.createCloudFromCharacter(cloudType);
+        }
+    };
+    Object.defineProperty(FluffyCloud.prototype, "fluff", {
+        get: function () {
+            return this._fluff;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FluffyCloud.prototype, "fluffGrid", {
+        get: function () {
+            return this._fluffGrid;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FluffyCloud.prototype, "fluffRadius", {
+        get: function () {
+            return Math.floor(this._bounds.width / this._fluffGrid.cols); //only reliable if cellWidth==cellHeight
+        },
+        enumerable: true,
+        configurable: true
+    });
+    FluffyCloud.prototype.createRegularCloud = function () {
+        var pointsAlongEgg = Math.round(MathUtil.getRandomNumberInRange(6, 20));
+        var points = EggFactory.getRandomRadiusEggPoints(this._bounds, pointsAlongEgg, .3);
+        this._context.beginPath();
+        this._context.moveTo(points[0], points[1]);
+        for (var i = 2; i < points.length; i += 2) {
+            this._context.lineTo(points[i], points[i + 1]);
+        }
+        this._context.closePath();
+        this.createFluffs();
+    };
+    FluffyCloud.prototype.createCloudFromCharacter = function (cloudType) {
+        this._context.clearRect(this._bounds.x, this._bounds.y, this._bounds.width, this._bounds.height);
+        //draw path with retangles on non-transparent pixels in imgData
+        var pathRect = new Rectangle(0, 0, this._bounds.width / this._fluffGrid.cols, this._bounds.height / this._fluffGrid.rows), i, total = this._fluffGrid.size, imgData = TextCloudStore.getCharImageData(cloudType, this._context, this._bounds), data = imgData.data, index = 0, row, col, pixelsPerRow = imgData.width * 4, pixelsPerCol = pixelsPerRow / this._fluffGrid.cols;
+        this._context.beginPath();
+        for (i = 0; i < total; i++) {
+            row = this._fluffGrid.getRowForIndex(i);
+            col = this._fluffGrid.getColForIndex(i);
+            index = pixelsPerRow * Math.round(row * pathRect.height) + Math.round(pathRect.width * col) * 4;
+            if (data[index] > 0) {
+                pathRect.x = this._bounds.x + col * pathRect.width;
+                pathRect.y = this._bounds.y + row * pathRect.height;
+                this._context.moveTo(pathRect.x, pathRect.y);
+                this._context.lineTo(pathRect.right, pathRect.y);
+                this._context.lineTo(pathRect.right, pathRect.bottom);
+                this._context.lineTo(pathRect.x, pathRect.bottom);
+                this._context.lineTo(pathRect.x, pathRect.y);
+            }
+        }
+        this._context.closePath();
+        this.createFluffs();
+    };
+    FluffyCloud.prototype.createFluffs = function () {
+        this._fluff = [];
+        var x, y, i, radius, cellWidth = Math.floor(this._bounds.width / this._fluffGrid.cols), cellHeight = Math.floor(this._bounds.height / this._fluffGrid.rows), halfCellWidth = Math.floor(cellWidth * .5), halfCellHeight = Math.floor(cellHeight * .5);
+        for (i = 0; i < this._fluffGrid.size; i++) {
+            x = this._bounds.x + this._fluffGrid.getColForIndex(i) * cellWidth + halfCellWidth;
+            y = this._bounds.y + this._fluffGrid.getRowForIndex(i) * cellHeight + halfCellHeight;
+            if (this._context.isPointInPath(x, y)) {
+                radius = Math.round(Math.max(halfCellWidth, halfCellHeight) * MathUtil.getRandomNumberInRange(1.6, 2));
+                this._fluffGrid.array[i] = this._fluff.length;
+                this._fluff.push(x, y, radius);
+            }
+            else {
+                this._fluffGrid.array[i] = -1;
+            }
+        }
+    };
+    return FluffyCloud;
+}());
+var MorphingFluffyCloud = /** @class */ (function () {
+    function MorphingFluffyCloud() {
+        this._morphData = [];
+        this._morphGrid = new GridArray();
+        this._fromCloud = new FluffyCloud();
+        this._toCloud = new FluffyCloud();
+        this._scanner = new GridArrayScanner();
+        this.initCloud = function (cloud, bounds, cloudType) {
+            cloud.init(this._canvas, bounds, this._morphGrid.rows, this._morphGrid.cols, cloudType);
+        };
+    }
+    Object.defineProperty(MorphingFluffyCloud.prototype, "morphData", {
+        get: function () {
+            return this._morphData;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(MorphingFluffyCloud.prototype, "fluffRadius", {
+        get: function () {
+            return this._fromCloud.fluffRadius;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    MorphingFluffyCloud.prototype.init = function (canvas, bounds, rows, cols, cloudType) {
+        if (rows === void 0) { rows = 10; }
+        if (cols === void 0) { cols = 10; }
+        this._morphGrid.init(rows, cols);
+        this._canvas = canvas;
+        this._context = this._canvas.getContext("2d");
+        this._bounds = bounds;
+        this.initCloud(this._toCloud, this._bounds, cloudType);
+    };
+    MorphingFluffyCloud.prototype.nextMorph = function (cloudType) {
+        //swap from and to clouds
+        var temp = this._fromCloud;
+        this._fromCloud = this._toCloud;
+        this._toCloud = temp;
+        this.initCloud(this._toCloud, this._bounds, cloudType);
+        this._morphData.length = 0; //clear particle system
+        var i, fromFluff = this._fromCloud.fluff, fromGrid = this._fromCloud.fluffGrid, toFluff = this._toCloud.fluff, toGrid = this._toCloud.fluffGrid, fromIndex, toIndex, total = fromGrid.size;
+        //populate with "fluffs on same grid index" from grids
+        for (i = 0; i < total; i++) {
+            this._morphGrid.array[i] = -1;
+            if (fromGrid.array[i] > -1 && toGrid.array[i] > -1) {
+                fromIndex = fromGrid.array[i];
+                toIndex = toGrid.array[i];
+                this._morphGrid.array[i] = this._morphData.length;
+                this._morphData.push(fromFluff[fromIndex], fromFluff[fromIndex + 1], fromFluff[fromIndex + 2], toFluff[toIndex], toFluff[toIndex + 1], toFluff[toIndex + 2]);
+            }
+        }
+        var morphIndex = -1;
+        for (i = 0; i < total; i++) {
+            if (this._morphGrid.array[i] > -1) {
+                continue;
+            }
+            //find closest fluff in morphGrid to merge to
+            fromIndex = fromGrid.array[i];
+            if (fromIndex > -1) {
+                morphIndex = this._scanner.searchSurroundingCells(this._morphGrid, i, this.gridScanCompare);
+                if (morphIndex > -1) {
+                    this._morphData.push(fromFluff[fromIndex], fromFluff[fromIndex + 1], fromFluff[fromIndex + 2], this._morphData[morphIndex + 3], this._morphData[morphIndex + 4], this._morphData[morphIndex + 5]);
+                }
+            }
+            //find closest fluff in morphGrid to emerge from
+            toIndex = toGrid.array[i];
+            if (toIndex > -1) {
+                morphIndex = this._scanner.searchSurroundingCells(this._morphGrid, i, this.gridScanCompare);
+                if (morphIndex > -1) {
+                    this._morphData.push(this._morphData[morphIndex], this._morphData[morphIndex + 1], this._morphData[morphIndex + 2], toFluff[toIndex], toFluff[toIndex + 1], toFluff[toIndex + 2]);
+                }
+            }
+        }
+    };
+    MorphingFluffyCloud.prototype.gridScanCompare = function (value) {
+        return value > -1;
+    };
+    return MorphingFluffyCloud;
+}());
+var sakri404App = /** @class */ (function () {
+    function sakri404App() {
+        this._appBounds = new Rectangle();
+        this._canvasBounds = new Rectangle();
+        this._cloudSlots = [];
+        this._cloudSquare = new Rectangle();
+        this._cloudTypes = [];
+        this._morphingClouds = []; //todo: set type
+        this._animator = new UnitAnimator();
+        this._fluffStrokeWidth = 10;
+    }
+    sakri404App.prototype.init = function (fluffCanvas, textDiv) {
+        this._canvas = fluffCanvas;
+        this.calculateLayout();
+        this.initClouds();
+        this._boundUpdate = this.update.bind(this);
+        this._boundComplete = this.complete.bind(this);
+        this.nextMorph();
+    };
+    sakri404App.prototype.calculateLayout = function () {
+        this._appBounds.update(0, 0, window.innerWidth, window.innerHeight);
+        this._canvas.style.left = "0px";
+        //todo : set proportional constraints for 'odd' sizes (too wide, too tall)
+        if (this._appBounds.isLandscape()) {
+            this._canvasBounds.update(0, Math.floor(this._appBounds.height * .1), window.innerWidth, Math.floor(this._appBounds.height * .6));
+            this._canvas.style.top = Math.floor(this._appBounds.height * .1) + "px";
+        }
+        else {
+            this._canvasBounds.update(0, Math.floor(this._appBounds.height * .33), window.innerWidth, Math.floor(this._appBounds.height * .33));
+            this._canvas.style.top = this._canvasBounds.y + "px";
+        }
+        this._canvas.width = this._canvasBounds.width;
+        this._canvas.height = this._canvasBounds.height;
+        this._context = this._canvas.getContext("2d");
+    };
+    sakri404App.prototype.initClouds = function () {
+        var i, numClouds = this._appBounds.isLandscape() ? 7 : 5;
+        this._cloudSquare.update(0, 0, this._canvasBounds.smallerSide * (numClouds - 2), this._canvasBounds.smallerSide);
+        if (this._cloudSquare.width > this._canvasBounds.width) {
+            this._cloudSquare.height = Math.floor((this._canvasBounds.width / this._cloudSquare.width) * this._cloudSquare.height);
+        }
+        this._cloudSquare.width = this._cloudSquare.height;
+        this._cloudSquare.inflate(-Math.floor(this._cloudSquare.height * .08));
+        var spacer = (this._canvasBounds.width + 2 * this._cloudSquare.width) - numClouds * this._cloudSquare.width;
+        spacer = spacer / (numClouds - 1);
+        var x = -this._cloudSquare.width, scale, halfway = Math.floor(numClouds * .5);
+        for (i = 0; i < numClouds; i++) {
+            this._morphingClouds[i] = this._morphingClouds[i] || new MorphingFluffyCloud();
+            this._cloudSlots[i] = this._cloudSlots[i] || new Rectangle();
+            scale = (i <= halfway) ? i / halfway : (numClouds - i - 1) / halfway;
+            scale = MathUtil.interpolate(scale, .5, 1);
+            this._cloudSlots[i].update(x, 0, this._cloudSquare.width * scale, this._cloudSquare.height * scale);
+            this._morphingClouds[i].init(this._canvas, this._cloudSquare, 10, 10, -1);
+            x += (spacer + this._cloudSquare.width);
+        }
+    };
+    sakri404App.prototype.getCloudTypes = function (numClouds) {
+        var cloudTypes = Array(numClouds).fill(-1);
+        cloudTypes[Math.ceil(cloudTypes.length / 2) - 1] = "4";
+        cloudTypes[Math.ceil(cloudTypes.length / 2)] = "0";
+        cloudTypes[Math.ceil(cloudTypes.length / 2) + 1] = "4";
+        return cloudTypes;
+    };
+    sakri404App.prototype.nextMorph = function () {
+        var i, cloudTypes = this.getCloudTypes(this._morphingClouds.length);
+        for (i = 0; i < this._morphingClouds.length; i++) {
+            this._morphingClouds[i].nextMorph(cloudTypes[i]);
+        }
+        this._fluffStrokeWidth = Math.ceil(this._morphingClouds[0].fluffRadius * .6);
+        var duration = Math.floor(MathUtil.getRandomNumberInRange(4000, 8000));
+        this._animator.start(duration, this._boundUpdate, this._boundComplete, UnitEasing.easeInOutSine);
+    };
+    sakri404App.prototype.complete = function () {
+        this._morphingClouds.push(this._morphingClouds.shift());
+        setTimeout(this.nextMorph.bind(this), 1000);
+    };
+    sakri404App.prototype.update = function (normal) {
+        this._context.clearRect(0, 0, this._canvas.width, this._canvas.height);
+        //draw sun
+        this._context.fillStyle = "#ffde25";
+        this._context.beginPath();
+        this._context.arc(this._canvas.width * .75, this._canvas.height * .35, Math.min(this._canvas.width, this._canvas.height) * .2, 0, MathUtil.PI2);
+        this._context.fill();
+        //draw clouds
+        this._context.strokeStyle = "#555555";
+        this._context.lineWidth = this._fluffStrokeWidth;
+        this._context.fillStyle = "#FFFFFF";
+        for (var i = 1; i < this._morphingClouds.length; i++) {
+            this.renderCloud(this._morphingClouds[i].morphData, this._cloudSlots[i], this._cloudSlots[i - 1], normal);
+        }
+    };
+    sakri404App.prototype.renderCloud = function (data, fromRect, toRect, normal) {
+        var i, total = data.length, x, y, radius;
+        this._context.save();
+        this._context.beginPath();
+        var scale = MathUtil.interpolate(normal, fromRect.width / this._cloudSquare.width, toRect.width / this._cloudSquare.width);
+        this._context.translate(MathUtil.interpolate(normal, fromRect.x, toRect.x), this._cloudSquare.height - this._cloudSquare.height * scale);
+        this._context.scale(scale, scale);
+        for (i = 6; i < total; i += 6) {
+            x = MathUtil.interpolate(normal, data[i], data[i + 3]);
+            y = MathUtil.interpolate(normal, data[i + 1], data[i + 4]);
+            radius = MathUtil.interpolate(normal, data[i + 2], data[i + 5]);
+            this._context.moveTo(x, y);
+            this._context.arc(x, y, radius, 0, MathUtil.PI2);
+        }
+        this._context.stroke();
+        this._context.fill();
+        this._context.restore();
+    };
+    return sakri404App;
+}());
+var clouds = new sakri404App();
+clouds.init(document.getElementById("renderCanvas"), document.getElementById("textContainer"));
+
+</script>
+</html>
